@@ -1,0 +1,301 @@
+<apex:page id="thepage" Controller="myClass">
+<apex:form id="theform">
+    <apex:pageblock id="thepageblock" title="Home Monitoring System">
+        <apex:inputHidden value="{!myString}" id="myHiddenField"/>
+        <apex:outputtext value="" id="OutputText" /> 
+         <!--   <table>
+            <tr>
+                <apex:image id="theImageON" value="{!$Resource.LightOn}" width="75" height="100" rendered="true"/>
+                <apex:image id="theImageOFF" value="{!$Resource.LightOff}" width="75" height="100" rendered="true"/>
+            </tr>
+            <tr>
+                <apex:image id="theCARIN" value="{!$Resource.CarIN}" width="75" height="100" rendered="true"/>
+                <apex:image id="theCAROUT" value="{!$Resource.CarOUT}" width="75" height="100" rendered="true"/>
+            </tr>
+         </table>
+         -->
+           <style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;margin:0px auto;}
+.tg td{font-family:Arial, sans-serif;font-size:36px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;}
+.tg th{font-family:Arial, sans-serif;font-size:36px;font-weight:normal;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;}
+.tg .tg-6ue7{font-size:36px;font-family:Arial, Helvetica, sans-serif !important;;background-color:#ffffff;color:#333333;vertical-align:top}
+.tg .tg-972z{font-size:36px;font-family:Arial, Helvetica, sans-serif !important;;background-color:#ffffff;vertical-align:top}
+.tg .tg-stof{font-size:36px;font-family:Arial, Helvetica, sans-serif !important;;background-color:#ffffff;color:#000000;vertical-align:top}
+</style>
+<table class="tg">
+    <tr>
+        <th class="tg-yw4l">House Lights</th>
+        <th class="tg-yw4l">Parking Lot</th>
+    </tr>
+  <tr>
+    
+    <td colspan ='1'>
+        <img id="theImageOFF" src="{!$Resource.LightOff}" alt="" border='3' height='200' width='200' />
+        <img id="theImageON" src="{!$Resource.LightON}" alt="" border='3' height='200' width='200' />
+    </td>
+    <td colspan ='1'>
+        <img id="theCARIN" src="{!$Resource.CARIN}" alt="" border='3' height='200' width='200' />
+        <img id="theCAROUT" src="{!$Resource.CAROUT}" alt="" border='3' height='200' width='200' />
+    </td>
+
+  </tr>   
+  
+  
+    
+    
+</table>
+    </apex:pageblock>
+    
+    
+
+
+
+<apex:includeScript value="{!$Resource.json2_js}"/>
+<apex:includeScript value="{!URLFOR($Resource.cometd, 'dojo/dojo.js')}"/>
+<apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" />
+</apex:form>
+
+<apex:stylesheet value="{!$Resource.demo_css}"/>
+    <script>var token = '{!$Api.Session_ID}';</script>
+      --  <div id="demo">
+            <div id="datastream"></div> 
+            <div id="input"> 
+                <div id="join">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td>&nbsp;</td>
+                                <td> Enter Topic Name </td>
+                                <td>
+                                    <input id="topic" type="text" value ="/topic/ArduinoIOTPushTopic" />
+                                </td>
+                                <td>
+                                    <button id="subscribeButton" 
+                                        class="button" style="background-color:green">Start Listening</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table> 
+                </div>
+                <div id="joined">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <button id="leaveButton" 
+                                        class="button" style="background-color:red">Stop Listening</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>  
+        <script type="text/javascript">
+        dojo.require('dojox.cometd');
+        dojo.require('dojox.cometd.timestamp');
+        dojo.require('dojox.cometd.ack');
+
+        var j$ = jQuery.noConflict();
+        j$(document).ready(function() {
+           //code when page is ready 
+           });
+
+dojo.ready(function() { 
+    
+    var datastream = {
+        _topic: null,
+        _connected: false,
+        _disconnecting: false,
+        _topicsubscription: null,
+        _token: null, 
+        _clientid: '3MVG9lKcPoNINVBJL81nlIzB6Z7TFQtwfc6rMsiZXaW_yUy2Dv35Ayfe248X4yEMgEz0GmNDK5QMJ0MSFZdha',
+        _loginURL: location.protocol + '//' + location.host + '//' + 'services/oauth2/authorize',
+    
+        _init: function()
+        { 
+            dojo.removeClass('join', 'hidden');
+            dojo.addClass('joined', 'hidden');
+            j$('[id*=theImageON]').hide();
+            j$('[id*=theImageOFF]').hide();
+            j$('[id*=theCARIN]').hide();
+            j$('[id*=theCAROUT]').hide();
+            j$('[id*=datastream]').hide();
+            
+            
+
+            dojo.query('#loginButton').onclick(function(e) {
+                datastream.login();
+            });
+            
+            dojo.query('#createTopicButton').onclick(function(e)
+            {
+                datastream.createTopic();
+            }); 
+    
+            dojo.query('#deleteTopicButton').onclick(function(e)
+            {
+                datastream.deleteTopic(dojo.byId('topicName').value);
+            }); 
+            
+            dojo.query('#createAccountButton').onclick(function(e)
+            {
+                datastream.createAccount();
+            }); 
+            
+            dojo.query('#updateAccountButton').onclick(function(e)
+            {
+                datastream.updateAccount();
+            }); 
+    
+            dojo.query('#subscribeButton').onclick(function(e)
+            {
+                datastream.subscribe(dojo.byId('topic').value);
+            }); 
+    
+            dojo.query('#leaveButton').onclick(datastream, 'leave');
+    
+            // Check if there was a saved application state
+            var stateCookie = dojox.cometd.COOKIE?dojox.cometd.COOKIE.get('dojox.cometd.demo.state'):null;
+            var state = stateCookie ? dojox.cometd.JSON.fromJSON(stateCookie) : null;
+            // Restore the state, if present
+            if (state)
+            {
+                dojo.byId('topic').value=state.topic;
+                setTimeout(function()
+                {
+                    // This will perform the handshake
+                    datastream.subscribe(state.topic);
+                }, 0);
+            }
+        },
+    
+        subscribe: function(topic)
+        {  
+            var cometdURL = location.protocol + '//' + location.host + '/cometd/23.0';
+            var auth = 'OAuth ' + token;
+            dojox.cometd.configure({
+                url: cometdURL,
+                requestHeaders: 
+                    { Authorization: auth}
+            });
+            dojox.cometd.handshake();
+            datastream._disconnecting = false;
+    
+            if (topic == null || name.topic == 0)
+            {
+                alert('Please enter a topic');
+                return;
+            }
+    
+            datastream._topic = topic;
+    
+            dojo.addClass('join', 'hidden');
+            dojo.removeClass('joined', 'hidden');
+            datastream._topicsubscription = dojox.cometd.subscribe(datastream._topic, datastream.receive);
+        },
+    
+        _unsubscribe: function()
+        {
+            if (datastream._topicsubscription)
+            {
+                dojox.cometd.unsubscribe(datastream._topicsubscription);
+            }
+            datastream._topicsubscription = null;
+        },
+    
+        leave: function()
+        { 
+            datastream._unsubscribe(); 
+            dojox.cometd.disconnect();
+    
+            // switch the input form
+            dojo.removeClass('join', 'hidden');
+            dojo.addClass('joined', 'hidden');
+    
+            dojo.byId('topic').focus();
+    
+            datastream._topic = null;
+            datastream._disconnecting = true;
+        },
+    
+        receive: function(message) 
+        { 
+            var datastream = dojo.byId('datastream');
+            data = message.data; 
+
+
+            var str = JSON.stringify(data, null, '\t');            
+            /*    
+            var SensorSearch = str.search("Sensor_Name__c");
+            var SensorName = str.substr(SensorSearch+18,3);
+            
+            
+            var SensorValueSearch = str.search("Sensor_Value__c");
+            var SensorValue = str.substr(SensorValueSearch+18,2);  // READDS only first 2 digits
+            */
+            var SensorName = data.sobject.Sensor_Name__c
+            var SensorValue =data.sobject.Sensor_Value__c;
+           
+
+            datastream.innerHTML += '<span class=\'text\'>' + JSON.stringify(data, null, '\t')  + SensorName + "XX" + SensorValue + '</span><br/>';
+            datastream.innerHTML += '<span class=\'text\'>' + '_____________ ' + '</span><br/>';
+            datastream.scrollTop = datastream.scrollHeight - datastream.clientHeight;
+            
+            
+            if (SensorName == "LDR" && SensorValue >80){
+             j$('[id*=theImageON]').show(); 
+             j$('[id*=theImageOFF]').hide();  
+            }
+            else if(SensorName == "LDR" && SensorValue <80){              
+               j$('[id*=theImageOFF]').show();            
+               j$('[id*=theImageON]').hide();  
+            }
+            else if(SensorName == "DST" && SensorValue <10){              
+               j$('[id*=theCARIN]').show();            
+               j$('[id*=theCAROUT]').hide();  
+            }
+            else if(SensorName == "DST" && SensorValue >10){              
+               j$('[id*=theCAROUT]').show();            
+               j$('[id*=theCARIN]').hide();  
+            }
+
+
+            
+        },
+
+
+        
+        display: function(text) {
+            var datastream = dojo.byId('datastream');
+            datastream.innerHTML += '<span class=\'data\'><span class=\'text\'>' + text + '</span></span><br/>';
+            datastream.scrollTop = datastream.scrollHeight - datastream.clientHeight;
+        }
+    };
+    
+    dojo.addOnLoad(datastream, '_init');
+    
+    dojo.addOnUnload(function()
+    {
+        if (datastream._topic)
+        {
+            // dojox.cometd.reload();
+            dojox.cometd.COOKIE.set('org.cometd.demo.state', dojox.cometd.JSON.toJSON({
+                topic: datastream._topic
+            }), { 'max-age': 5 });
+        }
+        else
+            dojox.cometd.disconnect();
+    }); 
+});
+
+function setVar(param){
+    jQuery('[id$=myHiddenField]').val(param);
+    passStringToController();
+}
+
+
+        </script>
+
+
+</apex:page>
